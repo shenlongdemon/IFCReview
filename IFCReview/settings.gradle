@@ -1,0 +1,9 @@
+include ':app'
+include ':webapiutil'
+project(':webapiutil').projectDir = new File('../../Library/webapiutil')
+
+include ':sharedpreferencesutil'
+project(':sharedpreferencesutil').projectDir = new File('../../Library/sharedpreferencesutil')
+
+include ':wirelessdevicecommunication'
+project(':wirelessdevicecommunication').projectDir = new File('../../Library/wirelessdevicecommunication')
