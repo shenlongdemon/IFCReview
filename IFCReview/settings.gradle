@@ -1,9 +1,9 @@
 include ':app'
 include ':webapiutil'
-project(':webapiutil').projectDir = new File('../../Library/webapiutil')
+project(':webapiutil').projectDir = new File('../../AndroidLib/webapiutil')
 
 include ':sharedpreferencesutil'
-project(':sharedpreferencesutil').projectDir = new File('../../Library/sharedpreferencesutil')
+project(':sharedpreferencesutil').projectDir = new File('../../AndroidLib/sharedpreferencesutil')
 
 include ':wirelessdevicecommunication'
-project(':wirelessdevicecommunication').projectDir = new File('../../Library/wirelessdevicecommunication')
+project(':wirelessdevicecommunication').projectDir = new File('../../AndroidLib/wirelessdevicecommunication')

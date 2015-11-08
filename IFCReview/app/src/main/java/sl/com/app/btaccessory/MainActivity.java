@@ -292,6 +292,7 @@ public class MainActivity extends AppCompatActivity {
         param.put("service", "orion");
         param.put("act", "AnalyzeTxtFile");
         param.put("obj", "http://101.99.52.38:90/PortIFC/IFCReview.txt");
+        tvAction.setText("Updating from internet...!!!");
         WebApiUtil.GetAsync(uri, param, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
@@ -308,6 +309,7 @@ public class MainActivity extends AppCompatActivity {
                     SharedPreferencesUtil.SetJSONObject(__currentActivity, DATA_KEY, data);
                     loadSettings();
                     __currentActivity.invalidateOptionsMenu();
+                    tvAction.setText("Updating from internet DONE!!!");
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
