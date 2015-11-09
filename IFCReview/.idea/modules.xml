@@ -5,7 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/IFCReview.iml" filepath="$PROJECT_DIR$/IFCReview.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../Library/sharedpreferencesutil/sharedpreferencesutil.iml" filepath="$PROJECT_DIR$/../../Library/sharedpreferencesutil/sharedpreferencesutil.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../../Library/webapiutil/webapiutil.iml" filepath="$PROJECT_DIR$/../../Library/webapiutil/webapiutil.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../AndroidLib/webapiutil/webapiutil.iml" filepath="$PROJECT_DIR$/../../AndroidLib/webapiutil/webapiutil.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../Library/webapiutil/webapiutil.iml" filepath="$PROJECT_DIR$/../../Library/webapiutil/webapiutil.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../Library/wirelessdevicecommunication/wirelessdevicecommunication.iml" filepath="$PROJECT_DIR$/../../Library/wirelessdevicecommunication/wirelessdevicecommunication.iml" />
     </modules>

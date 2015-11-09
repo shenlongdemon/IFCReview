@@ -186,29 +186,44 @@ public class MainActivity extends AppCompatActivity {
     private String getIPAdress(List<Byte> data)
     {
         String port = "";
-        String ip = "";
+        String ip1 = "";
+        String ip2 = "";
+        String imei = "";
+        String sim = "";
         try
         {
 
-            if (_data.size() > 203) {
+            if (_data.size() > 250) {
 
-                int ip1 = (int) _data.get(165);
-                int ip2 = (int) _data.get(166);
-                int ip3 = (int) _data.get(167);
-                int ip4 = (int) _data.get(168);
-                if(ip1 != 101)
+                // imei
+                for(int i = 32; i < 47;i++)
                 {
-                    int a111 = 10;
-                    ip1 = a111;
+                    int c = (int)_data.get(i) - 48;
+                    imei += c + "";
                 }
-                ip1 = ip1 < 0 ? ip1 + 255 : ip1;
-                ip2 = ip2 < 0 ? ip2 + 255 : ip2;
-                ip3 = ip3 < 0 ? ip3 + 255 : ip3;
-                ip4 = ip4 < 0 ? ip4 + 255 : ip4;
-                ip = ip1 + "." + ip2 + "." + ip3 + "." + ip4;
-
-                int p2 = (int) _data.get(202);
-                int p1 = (int) _data.get(203);
+                // sim
+                for(int i = 230; i < 249;i++)
+                {
+                    int c = (int)_data.get(i) - 48;
+                    sim += c + "";
+                }
+                // ip1
+                for(int i = 148; i < 152;i++ )
+                {
+                    int sopi = (int) _data.get(i);
+                    sopi = sopi < 0 ? sopi + 256 : sopi;
+                    ip1 += sopi + ".";
+                }
+                // ip2
+                for(int i = 187; i < 191;i++ )
+                {
+                    int sopi = (int) _data.get(i);
+                    sopi = sopi < 0 ? sopi + 256 : sopi;
+                    ip2 += sopi + ".";
+                }
+                // port
+                int p2 = (int) _data.get(185);
+                int p1 = (int) _data.get(186);
 
                 String s1 = (Integer.toHexString(p1).toUpperCase());
                 if(s1.length() > 2)
@@ -221,13 +236,16 @@ public class MainActivity extends AppCompatActivity {
                     s2 = s2.substring(s2.length() - 2, s2.length());
                 }
                 String hex = (s1 + "" + s2) + "";
-
                 port = Integer.parseInt(hex,16) + "";
             }
         }
         catch(Exception ex)
         {}
-        return ip + " : " + port;
+        String res = "Ip1 = " + ip1 + " : " + port
+                + "\r\n" + "IP2 = " + ip2 + " : " + port
+                + "\r\n" + "IMEI = " + imei
+                + "\r\n" + "SIM = " + sim;
+        return res;
     }
     private void clear()
     {
@@ -297,6 +315,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 try {
+                    tvAction.setText("Analizing data !!!");
                     JSONObject data = response.getJSONObject("Data");
 
                     JSONArray op = data.getJSONArray("OpenPort");
@@ -311,13 +330,13 @@ public class MainActivity extends AppCompatActivity {
                     __currentActivity.invalidateOptionsMenu();
                     tvAction.setText("Updating from internet DONE!!!");
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    tvAction.setText("Error when Analizing data !!!");
                 }
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
-                JSONObject data = errorResponse;
+                tvAction.setText("Error when connect server!!!");
             }
 
 
