@@ -1,8 +1,10 @@
 package sl.com.app.btaccessory;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -48,12 +50,14 @@ public class MainActivity extends AppCompatActivity {
     private List<Byte> _data = null;
     Toast _toast =null;
     private static final String SEPERATE = "@";
-
+    private static final int REQUEST_ENABLE_BT = 1;
     private static final String DATA_KEY = "data_key";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
         final Activity __currentActivity = (Activity) this;
         _toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
 
@@ -305,6 +309,10 @@ public class MainActivity extends AppCompatActivity {
     public void doUpdateInternet()
     {
         final Activity __currentActivity = (Activity)this;
+        final ProgressDialog callServiceDialog = new ProgressDialog(__currentActivity );
+        callServiceDialog.setTitle("IFC Update");
+        callServiceDialog.setMessage("Updating from internet...!!!");
+        callServiceDialog.show();
         String uri = "http://slwebutil.somee.com/api/service/doaction";
         RequestParams param = new RequestParams();
         param.put("service", "orion");
@@ -330,13 +338,15 @@ public class MainActivity extends AppCompatActivity {
                     __currentActivity.invalidateOptionsMenu();
                     tvAction.setText("Updating from internet DONE!!!");
                 } catch (JSONException e) {
-                    tvAction.setText("Error when Analizing data !!!");
+                    tvAction.setText("Error when Analyzing data !!!");
                 }
+                callServiceDialog.dismiss();
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
                 tvAction.setText("Error when connect server!!!");
+                callServiceDialog.dismiss();
             }
 
 
@@ -385,24 +395,36 @@ public class MainActivity extends AppCompatActivity {
 
     public void loadDevice()
     {
-        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-        if (pairedDevices.size() > 0) {
-            // Loop through paired devices
-            for (BluetoothDevice device : pairedDevices) {
-                try
-                {
-                    SLBluetoothDevice btDevice = new SLBluetoothDevice(device);
-                    int res = SLDeviceManager.getInstance().manage(btDevice, _handler);
-                }
-                catch(Exception ex)
-                {
+        try {
+            BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            if (mBluetoothAdapter == null) {
+                return;
+            }
+            if (!mBluetoothAdapter.isEnabled()) {
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+            }
 
+
+            Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+            if (pairedDevices.size() > 0) {
+                // Loop through paired devices
+                for (BluetoothDevice device : pairedDevices) {
+                    try {
+                        SLBluetoothDevice btDevice = new SLBluetoothDevice(device);
+                        int res = SLDeviceManager.getInstance().manage(btDevice, _handler);
+                    } catch (Exception ex) {
+
+                    }
                 }
             }
+            _deviceAdapter = new DeviceAdapter(this, SLDeviceManager.getInstance().getDevices());
+            spDevice.setAdapter(_deviceAdapter);
         }
-        _deviceAdapter = new DeviceAdapter(this,  SLDeviceManager.getInstance().getDevices());
-        spDevice.setAdapter(_deviceAdapter);
+        catch(Exception ex)
+        {
+            tvResult.setText(ex.getMessage().toString());
+        }
     }
 
     @Override
@@ -488,7 +510,7 @@ public class MainActivity extends AppCompatActivity {
                     String actionname = a_d[0];
                     String data = a_d[1];
 
-                    publishProgress(act_data);
+                    publishProgress(act_data + " (" + i +"/" + count + ")");
                     Send(actionname, data);
                     Thread.sleep(100);
                 }
