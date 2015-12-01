@@ -4,13 +4,13 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -38,9 +38,10 @@ import sl.com.lib.webapiutil.WebApiUtil;
 import sl.com.lib.wirelessdevicecommunication.ISLDevice;
 import sl.com.lib.wirelessdevicecommunication.SLDeviceManager;
 import sl.com.lib.wirelessdevicecommunication.device.SLBluetoothDevice;
+import sl.com.lib.wirelessdevicecommunication.interfaces.ISLDeviceChanged;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ISLDeviceChanged {
     private Spinner spDevice, spSetting;
     private Button btnSet, btnRefresh, btnOpenPort, btnRunApp, btnReset;
     private IFCActionAdapter _actionAdapter;
@@ -60,7 +61,8 @@ public class MainActivity extends AppCompatActivity {
 
         final Activity __currentActivity = (Activity) this;
         _toast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
-
+        SLDeviceManager.getInstance().setContext(this, this);
+        SLDeviceManager.getInstance().discoverBluetooth(3);
         spDevice = (Spinner)findViewById(R.id.spDevice);
         spSetting = (Spinner)findViewById(R.id.spSetting);
 
@@ -163,6 +165,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 try {
+                    tvResult.setText("");
                     clear();
                     loadDevice();
                 } catch (Exception e) {
@@ -283,9 +286,17 @@ public class MainActivity extends AppCompatActivity {
                     {
                         SLDeviceManager.getInstance().doAction(device.getSignature(), SLDeviceManager.Action.SEND, bytes);
                     }
+                    else
+                    {
+                        Log.i("shenlong", "Device is not connect !!!");
+                    }
                 } catch (Exception e) {
-                    //tvResult.setText("Cannot Send: " + actionName + "\n" + data);
+                    Log.i("shenlong", "Error when SEND data");
                 }
+            }
+            else
+            {
+                Log.i("shenlong", "Device is null !!!");
             }
         }
     }
@@ -396,16 +407,7 @@ public class MainActivity extends AppCompatActivity {
     public void loadDevice()
     {
         try {
-            BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-            if (mBluetoothAdapter == null) {
-                return;
-            }
-            if (!mBluetoothAdapter.isEnabled()) {
-                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-            }
-
-
+            BluetoothAdapter mBluetoothAdapter = SLDeviceManager.getInstance().makesureEnableBluetooth();
             Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
             if (pairedDevices.size() > 0) {
                 // Loop through paired devices
@@ -469,6 +471,16 @@ public class MainActivity extends AppCompatActivity {
             doFactoryReset();
             return true;
         }
+        else if(item.getItemId() == R.id.mnuATCode)
+        {
+            setContentView(R.layout.atcode_layout);
+            return true;
+        }
+        else if(item.getItemId() == R.id.mnuMain)
+        {
+            setContentView(R.layout.activity_main);
+            return true;
+        }
         else {
             try {
                 JSONObject data = SharedPreferencesUtil.GetJSONObject(this, DATA_KEY);
@@ -496,12 +508,26 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public int onDeviceDisconnected(int signature) {
+
+        try {
+            SLDeviceManager.getInstance().disconnect(signature);
+            _deviceAdapter.notifyDataSetChanged();
+            tvResult.setText("");
+            tvAction.setText("Bluetooth device is disconnected !!!\nPlease re-connect for next action !!!");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return signature;
+    }
+
 
     private class SendTask extends AsyncTask<String, String, Integer> {
         protected Integer doInBackground(String... actionname_data) {
             int count = actionname_data.length;
-
-
             try {
 
                 for (int i = 0 ; i < count; i++) {
@@ -510,7 +536,7 @@ public class MainActivity extends AppCompatActivity {
                     String actionname = a_d[0];
                     String data = a_d[1];
 
-                    publishProgress(act_data + " (" + i +"/" + count + ")");
+                    publishProgress(actionname, data,"(" + (i+1) +"/" + count + ")");
                     Send(actionname, data);
                     Thread.sleep(100);
                 }
@@ -521,10 +547,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         protected void onProgressUpdate(String... progress) {
-            String str =  progress[0].replace(SEPERATE, " : ");
+            String actionname =  progress[0];
+            String data =  progress[1];
+            String prog =  progress[2];
             String currentDateandTime = getNow();
-            tvAction.setText(currentDateandTime + " : " + str + "\r\n" + tvAction.getText());
-            _toast.setText(str);
+
+
+            tvAction.setText(currentDateandTime + " : " + actionname + " " + prog + " : " + data  + "\r\n" + tvAction.getText());
+            _toast.setText(actionname + " " + prog);
             _toast.show();
         }
 

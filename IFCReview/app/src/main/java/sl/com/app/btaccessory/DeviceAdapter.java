@@ -1,5 +1,6 @@
 package sl.com.app.btaccessory;
 
+import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -83,10 +84,20 @@ public class DeviceAdapter extends BaseAdapter {
     private void btnConnect_Click(Button btn, int itemIndex)
     {
         try {
+            TextView tvAction = (TextView)((Activity)_context).findViewById(R.id.tvAction);
+            tvAction.setText("");
             ISLDevice device = (ISLDevice) getItem(itemIndex);
+
             boolean isConnected = SLDeviceManager.getInstance().isConnected(device.getSignature());
             if(isConnected == false) {
-                SLDeviceManager.getInstance().connect(device.getSignature());
+                try {
+                    SLDeviceManager.getInstance().connect(device.getSignature());
+                    tvAction.setText("Connect to device " + device.getName() + " successfully !!!" );
+                }
+                catch (Exception ex)
+                {
+                    tvAction.setText("Cannot connect device " + device.getName() + " !!!\nPlease ensure that device is available !!!");
+                }
             }
             else {
                 SLDeviceManager.getInstance().disconnect(device.getSignature());
