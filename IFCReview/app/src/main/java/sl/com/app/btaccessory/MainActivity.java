@@ -149,7 +149,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
                         String ipaddress = getIPAdress(_data);
 
-                        tvResult.setText(now + "\n" + str + "\n" + ipaddress);
+                        tvResult.setText(ipaddress + "\n\n" + now + "\n" + str + "\n");
                     }
                 }catch (Exception ex)
                 {}
@@ -197,6 +197,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         String ip2 = "";
         String imei = "";
         String sim = "";
+        String fw = "";
         try
         {
 
@@ -244,6 +245,13 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                 }
                 String hex = (s1 + "" + s2) + "";
                 port = Integer.parseInt(hex,16) + "";
+
+                // fw
+                for(int i = 79; i < 83;i++ )
+                {
+                    int c = (int)_data.get(i) - 48;
+                    fw += c + "";
+                }
             }
         }
         catch(Exception ex)
@@ -251,7 +259,8 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         String res = "Ip1 = " + ip1 + " : " + port
                 + "\r\n" + "IP2 = " + ip2 + " : " + port
                 + "\r\n" + "IMEI = " + imei
-                + "\r\n" + "SIM = " + sim;
+                + "\r\n" + "SIM = " + sim
+                + "\r\n" + "Firmware = " + fw;
         return res;
     }
     private void clear()
