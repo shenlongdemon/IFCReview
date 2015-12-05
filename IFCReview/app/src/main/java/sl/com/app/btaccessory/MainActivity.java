@@ -52,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     Toast _toast =null;
     private static final String SEPERATE = "@";
     private static final int REQUEST_ENABLE_BT = 1;
+    private static final int DELAY_BETWEEN_2_SEND_DATA = 300;
     private static final String DATA_KEY = "data_key";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -132,6 +133,8 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                 try {
                     if (msg.what == 1) {
                         byte[] sdata = (byte[]) msg.obj;
+                        String decoded = new String(sdata, "UTF-8");
+                        Log.i("shenlong",decoded );
                         if(_data == null || _data.size() == 0)
                         {
                             _data = new ArrayList<Byte>();
@@ -247,9 +250,9 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                 port = Integer.parseInt(hex,16) + "";
 
                 // fw
-                for(int i = 79; i < 83;i++ )
+                for(int i = 68; i < 83;i++ )
                 {
-                    int c = (int)_data.get(i) - 48;
+                    char c = (char)((byte)_data.get(i));
                     fw += c + "";
                 }
             }
@@ -280,9 +283,10 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         new SendTask().execute(action_data);
     }
 
-    public void Send(String actionName, String data)
+    public int Send(String actionName, String data)
     {
         clear();
+        int res = 0;
         ISLDevice device = (ISLDevice)spDevice.getSelectedItem();
 
         if(data != "") {
@@ -294,6 +298,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     if (isConnected == true)
                     {
                         SLDeviceManager.getInstance().doAction(device.getSignature(), SLDeviceManager.Action.SEND, bytes);
+                        res = 1;
                     }
                     else
                     {
@@ -308,6 +313,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                 Log.i("shenlong", "Device is null !!!");
             }
         }
+        return res;
     }
     public  void doFactoryReset()
     {
@@ -537,17 +543,23 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     private class SendTask extends AsyncTask<String, String, Integer> {
         protected Integer doInBackground(String... actionname_data) {
             int count = actionname_data.length;
+            int res = 0;
             try {
 
                 for (int i = 0 ; i < count; i++) {
                     String act_data = actionname_data[i];
                     String[] a_d = act_data.split(SEPERATE);
+
                     String actionname = a_d[0];
                     String data = a_d[1];
 
-                    publishProgress(actionname, data,"(" + (i+1) +"/" + count + ")");
-                    Send(actionname, data);
-                    Thread.sleep(100);
+                    publishProgress(actionname, data, "(" + (i + 1) + "/" + count + ")");
+                    res = Send(actionname, data);
+                    if(res == 0)
+                    {
+                        break;
+                    }
+                    Thread.sleep(DELAY_BETWEEN_2_SEND_DATA);
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -560,15 +572,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             String data =  progress[1];
             String prog =  progress[2];
             String currentDateandTime = getNow();
-
-
-            tvAction.setText(currentDateandTime + " : " + actionname + " " + prog + " : " + data  + "\r\n" + tvAction.getText());
-            _toast.setText(actionname + " " + prog);
-            _toast.show();
-        }
-
-        protected void onPostExecute(String result) {
-
+            tvAction.setText(currentDateandTime + " : " + actionname + " " + prog+ "\n" + data);
         }
     }
 
