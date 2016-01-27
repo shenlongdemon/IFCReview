@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -42,9 +43,10 @@ import sl.com.lib.wirelessdevicecommunication.interfaces.ISLDeviceChanged;
 
 
 public class MainActivity extends AppCompatActivity implements ISLDeviceChanged {
-    private Spinner spDevice, spSetting;
+    private Spinner spDevice, spSetting, spVersion;
     private Button btnSet, btnRefresh, btnOpenPort, btnRunApp, btnReset;
     private IFCActionAdapter _actionAdapter;
+    private ArrayAdapter<String> _versionAdapter;
     private DeviceAdapter _deviceAdapter;
     private TextView tvResult, tvAction;
     Handler _handler;
@@ -53,11 +55,13 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     private static final String SEPERATE = "@";
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int DELAY_BETWEEN_2_SEND_DATA = 300;
-    private static final String DATA_KEY = "data_key";
+    //private static final String DATA_KEY = "data_key";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
 
 
         final Activity __currentActivity = (Activity) this;
@@ -66,6 +70,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         SLDeviceManager.getInstance().discoverBluetooth(3);
         spDevice = (Spinner)findViewById(R.id.spDevice);
         spSetting = (Spinner)findViewById(R.id.spSetting);
+        spVersion  = (Spinner)findViewById(R.id.spVersion);
 
         btnSet = (Button)findViewById(R.id.btnSet);
         btnRefresh = (Button)findViewById(R.id.btnRefresh);
@@ -74,7 +79,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             @Override
             public void onClick(View v) {
                 try {
-                    JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity,DATA_KEY);
+                    JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity, getVersion());
                     JSONArray op = data.getJSONArray("OpenPort");
                     String[] openPortCode = new String[op.length()];
 
@@ -93,7 +98,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             @Override
             public void onClick(View v) {
                 try {
-                    JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity,DATA_KEY);
+                    JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity,getVersion());
                     String runAppCode = data.getString("RunApp");
                     SendAsyncTask("Run App" + SEPERATE + runAppCode);
                 } catch (Exception e) {
@@ -107,7 +112,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             @Override
             public void onClick(View v) {
                 try {
-                    JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity, DATA_KEY);
+                    JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity, getVersion());
                     JSONArray op = data.getJSONArray("ResetCPU");
                     String[] resetCode = new String[op.length()];
 
@@ -163,7 +168,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
         loadDevice();
         loadSettings();
-
+        loadVersion();
         btnRefresh.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -190,9 +195,19 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     private void handleWhenGetData()
     {
         final Activity __currentActivity = (Activity)this;
-        JSONObject jsonObj = SharedPreferencesUtil.GetJSONObject(__currentActivity, DATA_KEY);
+        JSONObject jsonObj = SharedPreferencesUtil.GetJSONObject(__currentActivity, getVersion());
     }
+    private String getVersion()
+    {
 
+        String version = "";
+        try
+        {
+            version = spVersion.getSelectedItem().toString();
+        }
+        catch (Exception ex){}
+        return  version;
+    }
     private String getIPAdress(List<Byte> data)
     {
         String port = "";
@@ -318,7 +333,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     public  void doFactoryReset()
     {
         try {
-            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, DATA_KEY);
+            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
             JSONArray fr = data.getJSONArray("FactoryReset");
             String[] updateFactoryResetStrs = new String[fr.length()];
 
@@ -334,6 +349,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     }
     public void doUpdateInternet()
     {
+        tvAction.setText("");
         final Activity __currentActivity = (Activity)this;
         final ProgressDialog callServiceDialog = new ProgressDialog(__currentActivity );
         callServiceDialog.setTitle("IFC Update");
@@ -344,23 +360,39 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         param.put("service", "orion");
         param.put("act", "AnalyzeTxtFile");
         param.put("obj", "http://101.99.52.38:90/PortIFC/IFCReview.txt");
-        tvAction.setText("Updating from internet...!!!");
+
         WebApiUtil.GetAsync(uri, param, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 try {
                     tvAction.setText("Analizing data !!!");
-                    JSONObject data = response.getJSONObject("Data");
 
-                    JSONArray op = data.getJSONArray("OpenPort");
-                    String runAppCode = data.getString("RunApp");
-                    JSONArray rc = data.getJSONArray("ResetCPU");
-                    JSONArray settings = data.getJSONArray("Settings");
-                    JSONArray fws = data.getJSONArray("UpdateFW");
-                    JSONArray fr = data.getJSONArray("FactoryReset");
+                    JSONArray arrayData = response.getJSONArray("Data");
+                    String names = "";
+                    for (int i = 0; i < arrayData.length(); i++) {
+                        JSONObject st = arrayData.getJSONObject(i);
+                        String name = st.getString("Name");
+                        names += name + ",";
+                        String code = name.replace(" ","");
+                        JSONObject data = response.getJSONObject("Object");
+                        JSONArray op = data.getJSONArray("OpenPort");
+                        String runAppCode = data.getString("RunApp");
+                        JSONArray rc = data.getJSONArray("ResetCPU");
+                        JSONArray settings = data.getJSONArray("Settings");
+                        JSONArray fws = data.getJSONArray("UpdateFW");
+                        JSONArray fr = data.getJSONArray("FactoryReset");
 
-                    SharedPreferencesUtil.SetJSONObject(__currentActivity, DATA_KEY, data);
+                        SharedPreferencesUtil.SetJSONObject(__currentActivity, code, data);
+
+
+                    }
+                    names = names.substring(0, names.length() - 2);
+
+
+                    SharedPreferencesUtil.SetString(__currentActivity, "Version", names);
+
                     loadSettings();
+                    loadVersion();
                     __currentActivity.invalidateOptionsMenu();
                     tvAction.setText("Updating from internet DONE!!!");
                 } catch (JSONException e) {
@@ -391,7 +423,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     public void doSetting(){
 
         try {
-            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, DATA_KEY);
+            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
             String pre_set = data.getString("WriteSetting");
             IFCSetting setting = (IFCSetting) spSetting.getSelectedItem();
             SendAsyncTask("WriteSetting" + SEPERATE + pre_set, setting.getName() + SEPERATE + setting.getCode());
@@ -399,10 +431,24 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             tvResult.setText("Cannot write setting");
         }
     }
+    public void loadVersion(){
+        try {
+            String data = SharedPreferencesUtil.GetString(this, "Version").toString();
+
+            String[] actions =data.split(",");
+
+            _versionAdapter =  new ArrayAdapter<String>(this,
+                    android.R.layout.simple_spinner_item, actions);
+            spVersion.setAdapter(_versionAdapter);
+        }
+        catch (Exception ex){
+
+        }
+    }
     public void loadSettings()
     {
         try {
-            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, DATA_KEY);
+            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
             JSONArray settings = data.getJSONArray("Settings");
             List<IFCSetting> actions = new ArrayList<IFCSetting>();
             for (int i = 0; i < settings.length(); i++) {
@@ -415,7 +461,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             spSetting.setAdapter(_actionAdapter);
         }
         catch (Exception ex){
-
+            tvResult.setText("Error when load setting \n" + tvResult.getText());
         }
     }
 
@@ -440,7 +486,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         }
         catch(Exception ex)
         {
-            tvResult.setText(ex.getMessage().toString());
+            tvResult.setText("Error when load devices \n" + tvResult.getText());
         }
     }
 
@@ -451,7 +497,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         menu.add(0,2,0,"Factory Reset");
         int idx = 3;
         try {
-            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, DATA_KEY);
+            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
             JSONArray fws = data.getJSONArray("UpdateFW");
             for (int i = 0; i < fws.length(); i++) {
                 JSONObject st = fws.getJSONObject(i);
@@ -498,7 +544,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         }
         else {
             try {
-                JSONObject data = SharedPreferencesUtil.GetJSONObject(this, DATA_KEY);
+                JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
                 JSONArray fws = data.getJSONArray("UpdateFW");
                 for (int i = 0; i < fws.length(); i++) {
                     JSONObject st = fws.getJSONObject(i);
