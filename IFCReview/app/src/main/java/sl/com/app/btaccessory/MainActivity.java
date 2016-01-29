@@ -14,7 +14,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -29,6 +29,7 @@ import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -46,8 +47,8 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     private Spinner spDevice, spSetting, spVersion;
     private Button btnSet, btnRefresh, btnOpenPort, btnRunApp, btnReset;
     private IFCActionAdapter _actionAdapter;
-    private ArrayAdapter<String> _versionAdapter;
     private DeviceAdapter _deviceAdapter;
+    private VersionAdapter _versionAdapter;
     private TextView tvResult, tvAction;
     Handler _handler;
     private List<Byte> _data = null;
@@ -71,7 +72,15 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         spDevice = (Spinner)findViewById(R.id.spDevice);
         spSetting = (Spinner)findViewById(R.id.spSetting);
         spVersion  = (Spinner)findViewById(R.id.spVersion);
+        spVersion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                loadSettings();
+            }
 
+            public void onNothingSelected(AdapterView<?> adapterView) {
+                return;
+            }
+        });
         btnSet = (Button)findViewById(R.id.btnSet);
         btnRefresh = (Button)findViewById(R.id.btnRefresh);
         btnOpenPort = (Button)findViewById(R.id.btnOpenPort);
@@ -204,6 +213,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         try
         {
             version = spVersion.getSelectedItem().toString();
+            version = version.replace(" ", "_");
         }
         catch (Exception ex){}
         return  version;
@@ -373,8 +383,8 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                         JSONObject st = arrayData.getJSONObject(i);
                         String name = st.getString("Name");
                         names += name + ",";
-                        String code = name.replace(" ","");
-                        JSONObject data = response.getJSONObject("Object");
+                        String code = name.replace(" ","_");
+                        JSONObject data = st.getJSONObject("Object");
                         JSONArray op = data.getJSONArray("OpenPort");
                         String runAppCode = data.getString("RunApp");
                         JSONArray rc = data.getJSONArray("ResetCPU");
@@ -386,13 +396,14 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
 
                     }
-                    names = names.substring(0, names.length() - 2);
+                    names = names.substring(0, names.length() - 1);
 
 
                     SharedPreferencesUtil.SetString(__currentActivity, "Version", names);
 
-                    loadSettings();
+
                     loadVersion();
+                    loadSettings();
                     __currentActivity.invalidateOptionsMenu();
                     tvAction.setText("Updating from internet DONE!!!");
                 } catch (JSONException e) {
@@ -435,10 +446,9 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         try {
             String data = SharedPreferencesUtil.GetString(this, "Version").toString();
 
-            String[] actions =data.split(",");
+            String[] versions =data.split(",");
 
-            _versionAdapter =  new ArrayAdapter<String>(this,
-                    android.R.layout.simple_spinner_item, actions);
+            _versionAdapter =  new VersionAdapter(this, Arrays.asList(versions));
             spVersion.setAdapter(_versionAdapter);
         }
         catch (Exception ex){

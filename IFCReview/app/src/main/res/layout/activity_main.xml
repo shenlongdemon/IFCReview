@@ -23,12 +23,7 @@
             android:layout_height="wrap_content"
             >
         </Spinner>
-        <Spinner
-            android:id="@+id/spVersion"
-            android:layout_weight="1"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            />
+
         <Button
             android:id="@+id/btnRefresh"
             android:text="Refresh"
@@ -37,6 +32,24 @@
             android:layout_height="wrap_content"/>
     </LinearLayout>
 
+
+    <View style="@style/HorizontalLine" android:background="#00008B"/>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Spinner
+            android:id="@+id/spVersion"
+            android:layout_weight="1"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            />
+
+    </LinearLayout>
+    <View style="@style/HorizontalLine" android:background="#00008B"/>
     <TextView
         android:id="@+id/tvResult"
         android:scrollbars = "vertical"
@@ -44,6 +57,7 @@
         android:layout_height="0dip"
         android:layout_weight="1"
         android:background="#EFFBF2"/>
+    <View style="@style/HorizontalLine" android:background="#00008B"/>
     <TextView
         android:id="@+id/tvAction"
         android:scrollbars = "vertical"
@@ -51,6 +65,7 @@
         android:layout_height="0dip"
         android:layout_weight="0.5"
         android:background="#F5FBEF"/>
+    <View style="@style/HorizontalLine" android:background="#00008B"/>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -68,6 +83,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
     </LinearLayout>
+    <View style="@style/HorizontalLine" android:background="#00008B"/>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
