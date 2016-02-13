@@ -75,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         spVersion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 loadSettings();
+                __currentActivity.invalidateOptionsMenu();
             }
 
             public void onNothingSelected(AdapterView<?> adapterView) {
