@@ -1,5 +1,7 @@
 package sl.com.app.btaccessory;
 
+import java.io.UnsupportedEncodingException;
+
 /**
  * Created by shenlong on 9/23/2015.
  */
@@ -20,5 +22,18 @@ public class IFCBusiness {
             bytes[i] = (byte)hex;
         }
         return bytes;
+    }
+    public static String toContent(String data)
+    {
+        String content = "";
+        byte[] bytes = getData(data);
+        try {
+            String decoded = new String(bytes, "UTF-8");
+            content = decoded;
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
+        return content;
     }
 }

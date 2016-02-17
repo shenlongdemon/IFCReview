@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Html;
+import android.text.Spanned;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Menu;
@@ -24,7 +26,6 @@ import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
@@ -55,8 +56,10 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     Toast _toast =null;
     private static final String SEPERATE = "@";
     private static final int REQUEST_ENABLE_BT = 1;
-    private static final int DELAY_BETWEEN_2_SEND_DATA = 300;
+    private static int DELAY_BETWEEN_2_SEND_DATA = 300;
     //private static final String DATA_KEY = "data_key";
+    private static int indexHtml = 0;
+    private String[] colors = new String[] {"red", "blue","black"};
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,6 +78,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         spVersion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 loadSettings();
+                loadDelay();
                 __currentActivity.invalidateOptionsMenu();
             }
 
@@ -167,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
                         String ipaddress = getIPAdress(_data);
 
-                        tvResult.setText(ipaddress + "\n\n" + now + "\n" + str + "\n");
+                        tvResult.setText(ipaddress + "\n\n" + now + "\n" + str + "\n" + tvResult.getText());
                     }
                 }catch (Exception ex)
                 {}
@@ -184,6 +188,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             public void onClick(View v) {
                 try {
                     tvResult.setText("");
+                    tvAction.setText("");
                     clear();
                     loadDevice();
                 } catch (Exception e) {
@@ -306,13 +311,18 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     }
     public void SendAsyncTask(String... action_data)
     {
+        indexHtml++;
+        if(indexHtml >= colors.length)
+        {
+            indexHtml = 0;
+        }
         new SendTask().execute(action_data);
     }
 
     public int Send(String actionName, String data)
     {
         clear();
-        int res = 0;
+        int res = 1;
         ISLDevice device = (ISLDevice)spDevice.getSelectedItem();
 
         if(data != "") {
@@ -360,7 +370,6 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     }
     public void doUpdateInternet()
     {
-        tvAction.setText("");
         final Activity __currentActivity = (Activity)this;
         final ProgressDialog callServiceDialog = new ProgressDialog(__currentActivity );
         callServiceDialog.setTitle("IFC Update");
@@ -370,13 +379,13 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         RequestParams param = new RequestParams();
         param.put("service", "orion");
         param.put("act", "AnalyzeTxtFile");
-        param.put("obj", "http://101.99.52.38:90/PortIFC/IFCReview.txt");
+        param.put("obj", "1");
 
         WebApiUtil.GetAsync(uri, param, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 try {
-                    tvAction.setText("Analizing data !!!");
+                    tvAction.setText("Analizing data !!!"+ "\n" + tvAction.getText());
 
                     JSONArray arrayData = response.getJSONArray("Data");
                     String names = "";
@@ -386,6 +395,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                         names += name + ",";
                         String code = name.replace(" ","_");
                         JSONObject data = st.getJSONObject("Object");
+                        String delay = data.getString("Delay");
                         JSONArray op = data.getJSONArray("OpenPort");
                         String runAppCode = data.getString("RunApp");
                         JSONArray rc = data.getJSONArray("ResetCPU");
@@ -406,32 +416,23 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     loadVersion();
                     loadSettings();
                     __currentActivity.invalidateOptionsMenu();
-                    tvAction.setText("Updating from internet DONE!!!");
-                } catch (JSONException e) {
-                    tvAction.setText("Error when Analyzing data !!!");
+                    tvAction.setText("Updating from internet DONE!!!"+ "\n" + tvAction.getText());
+                } catch (Exception e) {
+                    tvAction.setText("Error when Analyzing data !!!"+ "\n" + tvAction.getText());
                 }
                 callServiceDialog.dismiss();
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
-                tvAction.setText("Error when connect server!!!");
+                tvAction.setText("Error when connect server!!!"+ "\n" + tvAction.getText());
                 callServiceDialog.dismiss();
             }
 
 
         });
     }
-    public void doUpdateFW()
-    {
-        String updateFWStr = getResources().getString(R.string.string_updatefw);
-        String[] updateFWStrs = updateFWStr.split(";");
-        for(int i = 0 ; i < updateFWStrs.length;i++)
-        {
-            updateFWStrs[i] = "Updating Firmware" + SEPERATE +  updateFWStrs[i];
-        }
-        SendAsyncTask(updateFWStrs);
-    }
+
     public void doSetting(){
 
         try {
@@ -475,7 +476,18 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             tvResult.setText("Error when load setting \n" + tvResult.getText());
         }
     }
-
+    public void loadDelay()
+    {
+        try {
+            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
+            String delay = data.getString("Delay");
+            DELAY_BETWEEN_2_SEND_DATA = Integer.parseInt(delay);
+            tvResult.setText("Delay in " + DELAY_BETWEEN_2_SEND_DATA + "\n" + tvResult.getText());
+        }
+        catch (Exception ex){
+            tvResult.setText("Error when load delay \n" + tvResult.getText());
+        }
+    }
     public void loadDevice()
     {
         try {
@@ -586,8 +598,8 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         try {
             SLDeviceManager.getInstance().disconnect(signature);
             _deviceAdapter.notifyDataSetChanged();
-            tvResult.setText("");
-            tvAction.setText("Bluetooth device is disconnected !!!\nPlease re-connect for next action !!!");
+            //tvResult.setText("");
+            tvAction.setText("Bluetooth device is disconnected !!!\nPlease re-connect for next action !!!" + "\n" + tvAction.getText() );
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -629,8 +641,20 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             String data =  progress[1];
             String prog =  progress[2];
             String currentDateandTime = getNow();
-            tvAction.setText(currentDateandTime + " : " + actionname + " " + prog+ "\n" + data);
+
+            String color = colors[indexHtml];
+
+
+            String content =
+                    "<font color='"+color+"'>"
+                    + currentDateandTime
+                    + " : " + actionname
+                    + " " + prog + " -> " + IFCBusiness.toContent(data) + "<br/>"
+                    + data + "<br/></font>";
+            Spanned sp = Html.fromHtml( content );
+            tvAction.append(
+                    Html.fromHtml(content)
+            );
         }
     }
-
 }
