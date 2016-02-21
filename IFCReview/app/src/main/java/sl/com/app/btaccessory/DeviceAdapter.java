@@ -1,6 +1,7 @@
 package sl.com.app.btaccessory;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -84,6 +85,13 @@ public class DeviceAdapter extends BaseAdapter {
     private void btnConnect_Click(Button btn, int itemIndex)
     {
         try {
+
+            final ProgressDialog callServiceDialog = new ProgressDialog((Activity)_context );
+            callServiceDialog.setTitle("IFC Device");
+            callServiceDialog.setMessage("Verifying the device...!!!");
+            callServiceDialog.show();
+
+
             TextView tvAction = (TextView)((Activity)_context).findViewById(R.id.tvAction);
             tvAction.setText("");
             ISLDevice device = (ISLDevice) getItem(itemIndex);
@@ -91,16 +99,21 @@ public class DeviceAdapter extends BaseAdapter {
             boolean isConnected = SLDeviceManager.getInstance().isConnected(device.getSignature());
             if(isConnected == false) {
                 try {
+
+
                     SLDeviceManager.getInstance().connect(device.getSignature());
-                    tvAction.setText("Connect to device " + device.getName() + " successfully !!!" );
+                    tvAction.setText("Connect to device " + device.getName() + " successfully !!! \n");
+                    callServiceDialog.dismiss();
                 }
                 catch (Exception ex)
                 {
-                    tvAction.setText("Cannot connect device " + device.getName() + " !!!\nPlease ensure that device is available !!!");
+                    tvAction.setText("Cannot connect device " + device.getName() + " !!!\nPlease ensure that device is available !!! \n");
+                    callServiceDialog.dismiss();
                 }
             }
             else {
                 SLDeviceManager.getInstance().disconnect(device.getSignature());
+                callServiceDialog.dismiss();
             }
             setStatus(btn, device);
         }

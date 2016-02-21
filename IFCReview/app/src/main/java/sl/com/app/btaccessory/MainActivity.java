@@ -60,6 +60,9 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     //private static final String DATA_KEY = "data_key";
     private static int indexHtml = 0;
     private String[] colors = new String[] {"red", "blue","black"};
+    private int _display = 1;
+    private  static String TAG = "shenlong";
+    private int _isReceive = 0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -93,6 +96,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             @Override
             public void onClick(View v) {
                 try {
+                    _isReceive = 1;
                     JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity, getVersion());
                     JSONArray op = data.getJSONArray("OpenPort");
                     String[] openPortCode = new String[op.length()];
@@ -126,6 +130,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             @Override
             public void onClick(View v) {
                 try {
+
                     JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity, getVersion());
                     JSONArray op = data.getJSONArray("ResetCPU");
                     String[] resetCode = new String[op.length()];
@@ -151,6 +156,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             public boolean handleMessage(Message msg) {
                 try {
                     if (msg.what == 1) {
+
                         byte[] sdata = (byte[]) msg.obj;
                         String decoded = new String(sdata, "UTF-8");
                         Log.i("shenlong",decoded );
@@ -166,12 +172,16 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                         {
                             bytes[i] = _data.get(i);
                         }
-                        String now = getNow();
+
                         String str = new String(bytes);
 
                         String ipaddress = getIPAdress(_data);
 
-                        tvResult.setText(ipaddress + "\n\n" + now + "\n" + str + "\n" + tvResult.getText());
+                        if(_isReceive == 1 && ipaddress != "") {
+                            setTextForResult( str + "\n\n" + ipaddress);
+                            _isReceive = 0;
+                        }
+
                     }
                 }catch (Exception ex)
                 {}
@@ -207,6 +217,21 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             }
         });
     }
+    private void setTextForResult(String text)
+    {
+        String now = "<b><u>" + getNow() + "</u></b>";
+        text = now + "\n" + text;
+        text = text.replace("\n","<br/>");
+        String color = colors[indexHtml];
+        String content =
+                "<font color='" + color + "'>"
+                        + text
+                        +  "<br/></font>";
+
+        tvResult.append(
+                Html.fromHtml(content)
+        );
+    }
     private void handleWhenGetData()
     {
         final Activity __currentActivity = (Activity)this;
@@ -232,6 +257,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         String imei = "";
         String sim = "";
         String fw = "";
+        String res = "";
         try
         {
 
@@ -286,15 +312,18 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     char c = (char)((byte)_data.get(i));
                     fw += c + "";
                 }
+                res = "Ip1 = " + ip1 + " : " + port
+                        + "\r\n" + "IP2 = " + ip2 + " : " + port
+                        + "\r\n" + "IMEI = " + imei
+                        + "\r\n" + "SIM = " + sim
+                        + "\r\n" + "Firmware = " + fw;
             }
         }
         catch(Exception ex)
-        {}
-        String res = "Ip1 = " + ip1 + " : " + port
-                + "\r\n" + "IP2 = " + ip2 + " : " + port
-                + "\r\n" + "IMEI = " + imei
-                + "\r\n" + "SIM = " + sim
-                + "\r\n" + "Firmware = " + fw;
+        {
+            res = "";
+        }
+
         return res;
     }
     private void clear()
@@ -311,11 +340,19 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     }
     public void SendAsyncTask(String... action_data)
     {
+        SendAsyncTask(1, action_data);
+    }
+    private void increaseIndexColor(){
         indexHtml++;
         if(indexHtml >= colors.length)
         {
             indexHtml = 0;
         }
+    }
+    public void SendAsyncTask(int display, String... action_data)
+    {
+        _display = display;
+        increaseIndexColor();
         new SendTask().execute(action_data);
     }
 
@@ -374,7 +411,10 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         final ProgressDialog callServiceDialog = new ProgressDialog(__currentActivity );
         callServiceDialog.setTitle("IFC Update");
         callServiceDialog.setMessage("Updating from internet...!!!");
+        callServiceDialog.setCanceledOnTouchOutside(false);
         callServiceDialog.show();
+        increaseIndexColor();
+
         String uri = "http://slwebutil.somee.com/api/service/doaction";
         RequestParams param = new RequestParams();
         param.put("service", "orion");
@@ -385,7 +425,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 try {
-                    tvAction.setText("Analizing data !!!"+ "\n" + tvAction.getText());
+                    //tvAction.setText("Analizing data ...!!!"+ "\n" + tvAction.getText());
 
                     JSONArray arrayData = response.getJSONArray("Data");
                     String names = "";
@@ -416,16 +456,16 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     loadVersion();
                     loadSettings();
                     __currentActivity.invalidateOptionsMenu();
-                    tvAction.setText("Updating from internet DONE!!!"+ "\n" + tvAction.getText());
+                    setTextForResult("Updating from internet DONE!!!");
                 } catch (Exception e) {
-                    tvAction.setText("Error when Analyzing data !!!"+ "\n" + tvAction.getText());
+                    setTextForResult("Error when Analyzing data!!!");
                 }
                 callServiceDialog.dismiss();
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
-                tvAction.setText("Error when connect server!!!"+ "\n" + tvAction.getText());
+                setTextForResult("Error when connect server!!!");
                 callServiceDialog.dismiss();
             }
 
@@ -473,7 +513,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             spSetting.setAdapter(_actionAdapter);
         }
         catch (Exception ex){
-            tvResult.setText("Error when load setting \n" + tvResult.getText());
+            setTextForResult("Error when load setting \n");
         }
     }
     public void loadDelay()
@@ -482,10 +522,12 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
             String delay = data.getString("Delay");
             DELAY_BETWEEN_2_SEND_DATA = Integer.parseInt(delay);
-            tvResult.setText("Delay in " + DELAY_BETWEEN_2_SEND_DATA + "\n" + tvResult.getText());
+
+
+            setTextForResult("Delay in " + DELAY_BETWEEN_2_SEND_DATA);
         }
         catch (Exception ex){
-            tvResult.setText("Error when load delay \n" + tvResult.getText());
+            setTextForResult("Error when load delay \n");
         }
     }
     public void loadDevice()
@@ -509,7 +551,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         }
         catch(Exception ex)
         {
-            tvResult.setText("Error when load devices \n" + tvResult.getText());
+            setTextForResult("Error when load devices \n");
         }
     }
 
@@ -572,6 +614,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                 for (int i = 0; i < fws.length(); i++) {
                     JSONObject st = fws.getJSONObject(i);
                     String name = st.getString("Name");
+                    int display = 0; //st.getInt("Display");
                     if(name.toString().equals(item.getTitle().toString()))
                     {
                         JSONArray codes = st.getJSONArray("Code");
@@ -580,7 +623,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                         {
                             cs[j] = name + SEPERATE + codes.getString(j);
                         }
-                        SendAsyncTask(cs);
+                        SendAsyncTask(display, cs);
                         break;
                     }
 
@@ -622,7 +665,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     String actionname = a_d[0];
                     String data = a_d[1];
 
-                    publishProgress(actionname, data, "(" + (i + 1) + "/" + count + ")");
+                    publishProgress(actionname, data, "(" + (i + 1) + "/" + count + ")",  i+"", count+"");
                     res = Send(actionname, data);
                     if(res == 0)
                     {
@@ -640,21 +683,45 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             String actionname =  progress[0];
             String data =  progress[1];
             String prog =  progress[2];
-            String currentDateandTime = getNow();
-
+            String currentDateandTime = "<b><u>" + getNow() + "</u></b>";
+            int idx = Integer.parseInt(progress[3]);
+            int count = Integer.parseInt(progress[4]);
             String color = colors[indexHtml];
+            if(_display == 1) {
 
 
-            String content =
-                    "<font color='"+color+"'>"
-                    + currentDateandTime
-                    + " : " + actionname
-                    + " " + prog + " -> " + IFCBusiness.toContent(data) + "<br/>"
-                    + data + "<br/></font>";
-            Spanned sp = Html.fromHtml( content );
-            tvAction.append(
-                    Html.fromHtml(content)
-            );
+
+                String content =
+                        "<font color='" + color + "'>"
+                                + currentDateandTime
+                                + " : " + actionname
+                                + " " + prog + " -> " + IFCBusiness.toContent(data) + "<br/>"
+                                + data + "<br/></font>";
+
+                tvAction.append(
+                        Html.fromHtml(content)
+                );
+            }
+            else
+            {
+                String content =
+                        "<font color='" + color + "'>"
+                                + "|</font>";
+                Spanned sp = Html.fromHtml(content);
+                tvAction.append(Html.fromHtml(content));
+
+
+                if(idx == count-1)
+                {
+                    content =
+                            "<font color='" + color + "'>"
+                                    + currentDateandTime
+                                    + " : " + actionname
+                                    + " " + prog + "<br/></font>";
+                    tvAction.append(Html.fromHtml(content));
+                }
+
+            }
         }
     }
 }

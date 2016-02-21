@@ -57,6 +57,7 @@
         android:layout_height="0dip"
         android:layout_weight="1"
         android:background="#EFFBF2"
+        android:gravity="bottom"
         />
     <View style="@style/HorizontalLine" android:background="#00008B"/>
     <TextView
@@ -64,7 +65,7 @@
         android:scrollbars = "vertical"
         android:layout_width="match_parent"
         android:layout_height="0dip"
-        android:layout_weight="0.5"
+        android:layout_weight="1"
         android:background="#F5FBEF"
         android:gravity="bottom"/>
     <View style="@style/HorizontalLine" android:background="#00008B"/>
