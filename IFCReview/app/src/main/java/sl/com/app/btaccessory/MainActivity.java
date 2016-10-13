@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -36,6 +38,7 @@ import java.util.List;
 import java.util.Set;
 
 import cz.msebera.android.httpclient.Header;
+import sl.com.app.btaccessory.common.Constants;
 import sl.com.lib.sharedpreferencesutil.SharedPreferencesUtil;
 import sl.com.lib.webapiutil.WebApiUtil;
 import sl.com.lib.wirelessdevicecommunication.ISLDevice;
@@ -45,6 +48,13 @@ import sl.com.lib.wirelessdevicecommunication.interfaces.ISLDeviceChanged;
 
 
 public class MainActivity extends AppCompatActivity implements ISLDeviceChanged {
+    // xu ly them phan cho nut RESET
+    private enum HANDLE{
+        NONE,
+        OPEN,
+        RESET
+    }
+    private HANDLE currentHanle = HANDLE.NONE;
     private Spinner spDevice, spSetting, spVersion;
     private Button btnSet, btnRefresh, btnOpenPort, btnRunApp, btnReset;
     private IFCActionAdapter _actionAdapter;
@@ -82,6 +92,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 loadSettings();
                 loadDelay();
+                loadButtonText();
                 __currentActivity.invalidateOptionsMenu();
             }
 
@@ -105,6 +116,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     {
                         openPortCode[i] = "Open Port" + SEPERATE + op.getString(i);
                     }
+                    currentHanle = HANDLE.OPEN;
                     SendAsyncTask(openPortCode);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -139,6 +151,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     {
                         resetCode[i] = "Reset CPU" + SEPERATE + op.getString(i);
                     }
+                    currentHanle = HANDLE.RESET;
                     SendAsyncTask(resetCode);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -156,30 +169,33 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             public boolean handleMessage(Message msg) {
                 try {
                     if (msg.what == 1) {
-
                         byte[] sdata = (byte[]) msg.obj;
                         String decoded = new String(sdata, "UTF-8");
-                        Log.i("shenlong",decoded );
-                        if(_data == null || _data.size() == 0)
-                        {
-                            _data = new ArrayList<Byte>();
-                        }
-                        for (int i = 0; i < msg.arg1; i++) {
-                            _data.add(sdata[i]);
-                        }
-                        byte[] bytes = new byte[_data.size()];
-                        for(int i = 0 ; i < _data.size();i++)
-                        {
-                            bytes[i] = _data.get(i);
-                        }
+                        if(currentHanle == HANDLE.OPEN) {
 
-                        String str = new String(bytes);
+                            Log.i("shenlong", decoded);
+                            if (_data == null || _data.size() == 0) {
+                                _data = new ArrayList<Byte>();
+                            }
+                            for (int i = 0; i < msg.arg1; i++) {
+                                _data.add(sdata[i]);
+                            }
+                            byte[] bytes = new byte[_data.size()];
+                            for (int i = 0; i < _data.size(); i++) {
+                                bytes[i] = _data.get(i);
+                            }
 
-                        String ipaddress = getIPAdress(_data);
+                            String str = new String(bytes);
 
-                        if(_isReceive == 1 && ipaddress != "") {
-                            setTextForResult( str + "\n\n" + ipaddress);
-                            _isReceive = 0;
+                            String ipaddress = getIPAdress(_data);
+
+                            if (_isReceive == 1 && ipaddress != "") {
+                                setTextForResult(str + "\n\n" + ipaddress);
+                                _isReceive = 0;
+                            }
+                        }
+                        else if(currentHanle == HANDLE.RESET){
+                            setTextForResult("RESET -> " + decoded);
                         }
 
                     }
@@ -414,14 +430,14 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         callServiceDialog.setCanceledOnTouchOutside(false);
         callServiceDialog.show();
         increaseIndexColor();
+        String urlService = SharedPreferencesUtil.GetString(this, Constants.KEY_URL_SERVICE);
+        if(urlService == null || urlService.equals("")){
+            loadSettingActivity();
+            return;
+        }
+        urlService += "1";
 
-        String uri = "http://slwebutil.somee.com/api/service/doaction";
-        RequestParams param = new RequestParams();
-        param.put("service", "orion");
-        param.put("act", "AnalyzeTxtFile");
-        param.put("obj", "1");
-
-        WebApiUtil.GetAsync(uri, param, new JsonHttpResponseHandler() {
+        WebApiUtil.GetAsync(urlService, null, new JsonHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
                 try {
@@ -455,6 +471,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
                     loadVersion();
                     loadSettings();
+                    loadButtonText();
                     __currentActivity.invalidateOptionsMenu();
                     setTextForResult("Updating from internet DONE!!!");
                 } catch (Exception e) {
@@ -516,6 +533,26 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             setTextForResult("Error when load setting \n");
         }
     }
+    private void loadButtonText()
+    {
+        try {
+            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
+            String openPortName = data.getString("OpenPortName");
+            String resetCPUName = data.getString("ResetCPUName");
+            String runAppName = data.getString("RunAppName");
+            String writeSettingName = data.getString("WriteSettingName");
+
+
+            btnOpenPort.setText(openPortName);
+            btnReset.setText(resetCPUName);
+            btnRunApp.setText(runAppName);
+            btnSet.setText(writeSettingName);
+            this.invalidateOptionsMenu();
+        }
+        catch (Exception ex){
+            setTextForResult("Error when load setting \n");
+        }
+    }
     public void loadDelay()
     {
         try {
@@ -559,7 +596,15 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         menu.add(0,1,0,"Update Internet");
-        menu.add(0,2,0,"Factory Reset");
+        try {
+            JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
+            String factoryResetName = data.getString("FactoryResetName");
+            menu.add(0, 2, 0, factoryResetName);
+        }
+        catch(Exception ex)
+        {
+            menu.add(0, 2, 0, "Factory Reset");
+        }
         int idx = 3;
         try {
             JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
@@ -580,7 +625,10 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
         return true;
     }
-
+    private void loadSettingActivity(){
+        Intent i = new Intent(this, SettingActivity.class);
+        startActivity(i);
+    }
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
@@ -607,6 +655,10 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             setContentView(R.layout.activity_main);
             return true;
         }
+        else if(item.getItemId() == R.id.mnuSetting)
+        {
+            loadSettingActivity();
+        }
         else {
             try {
                 JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
@@ -614,7 +666,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                 for (int i = 0; i < fws.length(); i++) {
                     JSONObject st = fws.getJSONObject(i);
                     String name = st.getString("Name");
-                    int display = 0; //st.getInt("Display");
+                    int display = st.getInt("Display");
                     if(name.toString().equals(item.getTitle().toString()))
                     {
                         JSONArray codes = st.getJSONArray("Code");

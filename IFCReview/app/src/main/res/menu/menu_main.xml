@@ -12,4 +12,9 @@
         android:orderInCategory="100"
         app:showAsAction="always"
         android:visible="false"/>
+    <item android:id="@+id/mnuSetting"
+        android:title="Setting"
+        android:orderInCategory="100"
+        app:showAsAction="never"
+        android:visible="true"/>
 </menu>
