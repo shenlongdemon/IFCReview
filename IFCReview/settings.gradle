@@ -1,4 +1,4 @@
-include ':app'
+include ':app', ':commonutil'
 include ':webapiutil'
 project(':webapiutil').projectDir = new File('../../AndroidLib/webapiutil')
 
@@ -7,3 +7,4 @@ project(':sharedpreferencesutil').projectDir = new File('../../AndroidLib/shared
 
 include ':wirelessdevicecommunication'
 project(':wirelessdevicecommunication').projectDir = new File('../../AndroidLib/wirelessdevicecommunication')
+

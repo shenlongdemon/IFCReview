@@ -26,6 +26,8 @@ import android.widget.Toast;
 
 import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
+import com.loopj.android.http.TextHttpResponseHandler;
+import com.sl.commonutil.zip.LZString;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.Set;
 
 import cz.msebera.android.httpclient.Header;
+
 import sl.com.app.btaccessory.common.Constants;
 import sl.com.lib.sharedpreferencesutil.SharedPreferencesUtil;
 import sl.com.lib.webapiutil.WebApiUtil;
@@ -51,9 +54,12 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     // xu ly them phan cho nut RESET
     private enum HANDLE{
         NONE,
-        OPEN,
-        RESET
+        OPEN_PORT,
+        RESET,
+        RUN,
+        SET
     }
+    public com.sl.commonutil.zip.Constants.COMPRESS_TYPE COMPRESS_TYPE = com.sl.commonutil.zip.Constants.COMPRESS_TYPE.NONE;
     private HANDLE currentHanle = HANDLE.NONE;
     private Spinner spDevice, spSetting, spVersion;
     private Button btnSet, btnRefresh, btnOpenPort, btnRunApp, btnReset;
@@ -116,7 +122,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     {
                         openPortCode[i] = "Open Port" + SEPERATE + op.getString(i);
                     }
-                    currentHanle = HANDLE.OPEN;
+                    currentHanle = HANDLE.OPEN_PORT;
                     SendAsyncTask(openPortCode);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -130,6 +136,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                 try {
                     JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity,getVersion());
                     String runAppCode = data.getString("RunApp");
+                    currentHanle = HANDLE.RUN;
                     SendAsyncTask("Run App" + SEPERATE + runAppCode);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -171,22 +178,22 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     if (msg.what == 1) {
                         byte[] sdata = (byte[]) msg.obj;
                         String decoded = new String(sdata, "UTF-8");
-                        if(currentHanle == HANDLE.OPEN) {
 
-                            Log.i("shenlong", decoded);
-                            if (_data == null || _data.size() == 0) {
-                                _data = new ArrayList<Byte>();
-                            }
-                            for (int i = 0; i < msg.arg1; i++) {
-                                _data.add(sdata[i]);
-                            }
-                            byte[] bytes = new byte[_data.size()];
-                            for (int i = 0; i < _data.size(); i++) {
-                                bytes[i] = _data.get(i);
-                            }
 
-                            String str = new String(bytes);
+                        Log.i("shenlong", decoded);
+                        if (_data == null || _data.size() == 0) {
+                            _data = new ArrayList<Byte>();
+                        }
+                        for (int i = 0; i < msg.arg1; i++) {
+                            _data.add(sdata[i]);
+                        }
+                        byte[] bytes = new byte[_data.size()];
+                        for (int i = 0; i < _data.size(); i++) {
+                            bytes[i] = _data.get(i);
+                        }
 
+                        String str = new String(bytes);
+                        if(currentHanle == HANDLE.OPEN_PORT) {
                             String ipaddress = getIPAdress(_data);
 
                             if (_isReceive == 1 && ipaddress != "") {
@@ -194,8 +201,9 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                                 _isReceive = 0;
                             }
                         }
-                        else if(currentHanle == HANDLE.RESET){
-                            setTextForResult("RESET -> " + decoded);
+                        else {
+                            String text = getTextResultFromDevice();
+                            setTextForResult(str + "\n\n" + text);
                         }
 
                     }
@@ -226,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             @Override
             public void onClick(View v) {
                 try {
+                    currentHanle = HANDLE.SET;
                     doSetting();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -264,6 +273,20 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         }
         catch (Exception ex){}
         return  version;
+    }
+    private String getTextResultFromDevice(){
+        String res = "";
+        int count = _data.size();
+        for(int i = 0 ; i < count;i++){
+            int so = (int) _data.get(i);
+            so = so < 0 ? so + 256 : so;
+            String hex = Integer.toHexString(so).toUpperCase();
+            if(hex.length() == 1){
+                hex += "0";
+            }
+            res += hex + " ";
+        }
+        return res;
     }
     private String getIPAdress(List<Byte> data)
     {
@@ -421,6 +444,92 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             tvAction.setText("Cannot do Factory Reset \r\n" + tvAction.getText());
         }
     }
+    private void doUpdateInternetWithNONECompress(String url, final ProgressDialog callServiceDialog) {
+        WebApiUtil.GetAsync(url, null, new JsonHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                try {
+                    //tvAction.setText("Analizing data ...!!!"+ "\n" + tvAction.getText());
+                    JSONArray arrayData = response.getJSONArray("Data");
+                    handleForDataInternet(arrayData);
+                    loadUI();
+                    setTextForResult("Updating from internet DONE!!!");
+                } catch (Exception e) {
+                    setTextForResult("Error when Analyzing data!!!");
+                }
+                callServiceDialog.dismiss();
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
+                setTextForResult("Error when connect server!!!");
+                callServiceDialog.dismiss();
+            }
+        });
+    }
+    private void doUpdateInternetWithLZStringCompress(String url, final ProgressDialog callServiceDialog){
+        WebApiUtil.GetAsync(url, null, new JsonHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
+                try {
+                    //tvAction.setText("Analizing data ...!!!"+ "\n" + tvAction.getText());
+                    String dataStr = response.getString("Data");
+                    String str = LZString.decompress(dataStr);
+                    JSONObject data = new JSONObject(str);
+                    JSONArray arrayData = data.getJSONArray("Data");
+                    handleForDataInternet(arrayData);
+                    loadUI();
+                    loadUI();
+                    setTextForResult("Updating from internet DONE!!!");
+                } catch (Exception e) {
+                    setTextForResult("Error when Analyzing data!!!");
+                }
+                callServiceDialog.dismiss();
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
+                setTextForResult("Error when connect server!!!");
+                callServiceDialog.dismiss();
+            }
+        });
+    }
+    private void handleForDataInternet(JSONArray arrayData) throws Exception{
+        final Activity __currentActivity = (Activity)this;
+        try {
+            String names = "";
+            for (int i = 0; i < arrayData.length(); i++) {
+                JSONObject st = arrayData.getJSONObject(i);
+                String name = st.getString("Name");
+                names += name + ",";
+                String code = name.replace(" ", "_");
+                JSONObject data = st.getJSONObject("Object");
+                String delay = data.getString("Delay");
+                JSONArray op = data.getJSONArray("OpenPort");
+                String runAppCode = data.getString("RunApp");
+                JSONArray rc = data.getJSONArray("ResetCPU");
+                JSONArray settings = data.getJSONArray("Settings");
+                JSONArray fws = data.getJSONArray("UpdateFW");
+                JSONArray fr = data.getJSONArray("FactoryReset");
+
+                SharedPreferencesUtil.SetJSONObject(__currentActivity, code, data);
+
+
+            }
+            names = names.substring(0, names.length() - 1);
+            SharedPreferencesUtil.SetString(__currentActivity, "Version", names);
+        }
+        catch (Exception ex){
+            throw ex;
+        }
+    }
+    private void loadUI(){
+        final Activity __currentActivity = (Activity)this;
+        loadVersion();
+        loadSettings();
+        loadButtonText();
+        __currentActivity.invalidateOptionsMenu();
+    }
     public void doUpdateInternet()
     {
         final Activity __currentActivity = (Activity)this;
@@ -435,59 +544,17 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             loadSettingActivity();
             return;
         }
-        urlService += "1";
-
-        WebApiUtil.GetAsync(urlService, null, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                try {
-                    //tvAction.setText("Analizing data ...!!!"+ "\n" + tvAction.getText());
-
-                    JSONArray arrayData = response.getJSONArray("Data");
-                    String names = "";
-                    for (int i = 0; i < arrayData.length(); i++) {
-                        JSONObject st = arrayData.getJSONObject(i);
-                        String name = st.getString("Name");
-                        names += name + ",";
-                        String code = name.replace(" ","_");
-                        JSONObject data = st.getJSONObject("Object");
-                        String delay = data.getString("Delay");
-                        JSONArray op = data.getJSONArray("OpenPort");
-                        String runAppCode = data.getString("RunApp");
-                        JSONArray rc = data.getJSONArray("ResetCPU");
-                        JSONArray settings = data.getJSONArray("Settings");
-                        JSONArray fws = data.getJSONArray("UpdateFW");
-                        JSONArray fr = data.getJSONArray("FactoryReset");
-
-                        SharedPreferencesUtil.SetJSONObject(__currentActivity, code, data);
+        if(COMPRESS_TYPE == COMPRESS_TYPE.LZSTRING){
+            urlService += "1";
+            doUpdateInternetWithLZStringCompress(urlService,callServiceDialog );
+        }
+        else{
+            urlService += "0";
+            doUpdateInternetWithNONECompress(urlService,callServiceDialog );
+        }
 
 
-                    }
-                    names = names.substring(0, names.length() - 1);
 
-
-                    SharedPreferencesUtil.SetString(__currentActivity, "Version", names);
-
-
-                    loadVersion();
-                    loadSettings();
-                    loadButtonText();
-                    __currentActivity.invalidateOptionsMenu();
-                    setTextForResult("Updating from internet DONE!!!");
-                } catch (Exception e) {
-                    setTextForResult("Error when Analyzing data!!!");
-                }
-                callServiceDialog.dismiss();
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
-                setTextForResult("Error when connect server!!!");
-                callServiceDialog.dismiss();
-            }
-
-
-        });
     }
 
     public void doSetting(){
