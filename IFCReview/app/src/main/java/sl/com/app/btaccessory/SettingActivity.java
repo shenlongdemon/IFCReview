@@ -160,7 +160,7 @@ public class SettingActivity extends AppCompatActivity {
                 String []data = responseString.split("\r\n");
                 for (String str :
                         data) {
-                    if(str.contains("orion-textfile")){
+                    if(str.contains("orion-textfile-new")){
                         String []strs = str.split(",");
                         etUrlService.setText(strs[1]);
                         break;

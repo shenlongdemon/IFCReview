@@ -26,8 +26,9 @@ public class IFCBusiness {
     public static String toContent(String data)
     {
         String content = "";
-        byte[] bytes = getData(data);
         try {
+            byte[] bytes = getData(data.replace("\n", ""));
+
             String decoded = new String(bytes, "UTF-8");
             content = decoded;
         } catch (UnsupportedEncodingException e) {

@@ -66,7 +66,9 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     private IFCActionAdapter _actionAdapter;
     private DeviceAdapter _deviceAdapter;
     private VersionAdapter _versionAdapter;
-    private TextView tvResult, tvAction;
+
+    private TextView tvResult; // man hinh tren
+    private TextView tvAction; // man hinh duoi
     Handler _handler;
     private List<Byte> _data = null;
     Toast _toast =null;
@@ -134,10 +136,19 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             @Override
             public void onClick(View v) {
                 try {
+
                     JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity,getVersion());
-                    String runAppCode = data.getString("RunApp");
+                    JSONArray runAppCodes = data.getJSONArray("RunApp");
+                    int count = runAppCodes.length();
+                    String[] cs = new String[count];
+                    for(int i = 0 ; i < count;i++){
+                        cs[i] = "Run App" + SEPERATE + runAppCodes.getString(i);
+                    }
+
+
                     currentHanle = HANDLE.RUN;
-                    SendAsyncTask("Run App" + SEPERATE + runAppCode);
+
+                    SendAsyncTask(cs);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -203,7 +214,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                         }
                         else {
                             String text = getTextResultFromDevice();
-                            setTextForResult(str + "\n\n" + text);
+                            setTextForResult(text + "\n\n" + str );
                         }
 
                     }
@@ -397,33 +408,33 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
     public int Send(String actionName, String data)
     {
-        clear();
-        int res = 1;
-        ISLDevice device = (ISLDevice)spDevice.getSelectedItem();
 
-        if(data != "") {
-            data = data.trim().toUpperCase();
-            byte[] bytes = IFCBusiness.getData(data);
-            if (device != null) {
-                try {
-                    boolean isConnected = SLDeviceManager.getInstance().isConnected(device.getSignature());
-                    if (isConnected == true)
-                    {
-                        SLDeviceManager.getInstance().doAction(device.getSignature(), SLDeviceManager.Action.SEND, bytes);
-                        res = 1;
+        int res = 1;
+        try {
+            clear();
+            ISLDevice device = (ISLDevice) spDevice.getSelectedItem();
+
+            if (data != "") {
+                data = data.trim().toUpperCase();
+                byte[] bytes = IFCBusiness.getData(data);
+                if (device != null) {
+                    try {
+                        boolean isConnected = SLDeviceManager.getInstance().isConnected(device.getSignature());
+                        if (isConnected == true) {
+                            SLDeviceManager.getInstance().doAction(device.getSignature(), SLDeviceManager.Action.SEND, bytes);
+                            res = 1;
+                        } else {
+                            Log.i("shenlong", "Device is not connect !!!");
+                        }
+                    } catch (Exception e) {
+                        Log.i("shenlong", "Error when SEND data");
                     }
-                    else
-                    {
-                        Log.i("shenlong", "Device is not connect !!!");
-                    }
-                } catch (Exception e) {
-                    Log.i("shenlong", "Error when SEND data");
+                } else {
+                    Log.i("shenlong", "Device is null !!!");
                 }
             }
-            else
-            {
-                Log.i("shenlong", "Device is null !!!");
-            }
+        }catch (Exception ex){
+            Log.i("shenlong", "Send error !!!");
         }
         return res;
     }
@@ -462,6 +473,18 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
+                setTextForResult("Error when connect server!!!");
+                callServiceDialog.dismiss();
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONArray errorResponse) {
+                setTextForResult("Error when connect server!!!");
+                callServiceDialog.dismiss();
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
                 setTextForResult("Error when connect server!!!");
                 callServiceDialog.dismiss();
             }
@@ -549,7 +572,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             doUpdateInternetWithLZStringCompress(urlService,callServiceDialog );
         }
         else{
-            urlService += "0";
+            urlService += "1";
             doUpdateInternetWithNONECompress(urlService,callServiceDialog );
         }
 
@@ -561,9 +584,15 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
         try {
             JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
-            String pre_set = data.getString("WriteSetting");
+            JSONArray pre_sets = data.getJSONArray("WriteSetting");
             IFCSetting setting = (IFCSetting) spSetting.getSelectedItem();
-            SendAsyncTask("WriteSetting" + SEPERATE + pre_set, setting.getName() + SEPERATE + setting.getCode());
+            int count = pre_sets.length();
+            String[] cs = new String[count + 1];
+            for(int i = 0 ; i < count;i++){
+                cs[i] = "WriteSetting" + SEPERATE + pre_sets.getString(i);
+            }
+            cs[count] = setting.getName() + SEPERATE + setting.getCode();
+            SendAsyncTask(cs);
         } catch (Exception e) {
             tvResult.setText("Cannot write setting");
         }
@@ -727,13 +756,15 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             loadSettingActivity();
         }
         else {
+            String vers = getVersion();
             try {
-                JSONObject data = SharedPreferencesUtil.GetJSONObject(this, getVersion());
+
+                JSONObject data = SharedPreferencesUtil.GetJSONObject(this, vers);
                 JSONArray fws = data.getJSONArray("UpdateFW");
                 for (int i = 0; i < fws.length(); i++) {
                     JSONObject st = fws.getJSONObject(i);
                     String name = st.getString("Name");
-                    int display = st.getInt("Display");
+                    int display = st.optBoolean("Display",false) == true ? 1 : 0;
                     if(name.toString().equals(item.getTitle().toString()))
                     {
                         JSONArray codes = st.getJSONArray("Code");
@@ -748,7 +779,9 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
                 }
             }catch (Exception ex)
-            {}
+            {
+                setTextForResult("Error when UpdateFW : " + vers);
+            }
         }
 
         return super.onOptionsItemSelected(item);
@@ -799,47 +832,58 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         }
 
         protected void onProgressUpdate(String... progress) {
-            String actionname =  progress[0];
-            String data =  progress[1];
-            String prog =  progress[2];
-            String currentDateandTime = "<b><u>" + getNow() + "</u></b>";
-            int idx = Integer.parseInt(progress[3]);
-            int count = Integer.parseInt(progress[4]);
-            String color = colors[indexHtml];
-            if(_display == 1) {
+            try {
+                String actionname = progress[0];
+                String data = progress[1];
+                String prog = progress[2];
+                String currentDateandTime = "<b><u>" + getNow() + "</u></b>";
+                int idx = Integer.parseInt(progress[3]);
+                int count = Integer.parseInt(progress[4]);
+                String color = colors[indexHtml];
+                if (_display == 1) {
 
 
-
-                String content =
-                        "<font color='" + color + "'>"
-                                + currentDateandTime
-                                + " : " + actionname
-                                + " " + prog + " -> " + IFCBusiness.toContent(data) + "<br/>"
-                                + data + "<br/></font>";
-
-                tvAction.append(
-                        Html.fromHtml(content)
-                );
-            }
-            else
-            {
-                String content =
-                        "<font color='" + color + "'>"
-                                + "|</font>";
-                Spanned sp = Html.fromHtml(content);
-                tvAction.append(Html.fromHtml(content));
-
-
-                if(idx == count-1)
-                {
-                    content =
+                    String content =
                             "<font color='" + color + "'>"
-                                    + currentDateandTime
-                                    + " : " + actionname
-                                    + " " + prog + "<br/></font>";
-                    tvAction.append(Html.fromHtml(content));
-                }
+                                    + "<br/>"
+                                    + currentDateandTime + " : " + actionname + " " + prog
+                                    + "<br/>"
+                                    + data + "<br/>"
+                                    + IFCBusiness.toContent(data)
+                                    + "</font>";
 
+                    tvAction.append(
+                            Html.fromHtml(content)
+                    );
+                } else {
+                    String sflash = "<font color='" + color + "'>"
+                            + "|</font>";
+                    String content = "";
+                    if (idx == 0){
+
+                        content =
+                                "<font color='" + color + "'><br/>"
+                                        + currentDateandTime
+                                        + " : " + actionname
+                                        + "<br/></font>";
+                        tvAction.append(Html.fromHtml(content));
+                    }
+
+
+                    tvAction.append(Html.fromHtml(sflash));
+
+
+                    if (idx == count - 1) {
+                        content =
+                                "<font color='" + color + "'>"
+                                        + prog + "<br/></font>";
+                        tvAction.append(Html.fromHtml(content));
+                    }
+
+                }
+            }
+            catch (Exception ex){
+                Log.i("","");
             }
         }
     }
