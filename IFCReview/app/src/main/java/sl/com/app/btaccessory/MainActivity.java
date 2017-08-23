@@ -81,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
     private int _display = 1;
     private  static String TAG = "shenlong";
     private int _isReceive = 0;
+    private boolean _isDecode = true;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -119,10 +120,10 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                     JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity, getVersion());
                     JSONArray op = data.getJSONArray("OpenPort");
                     String[] openPortCode = new String[op.length()];
-
+                    String openPortName = data.get("OpenPortName").toString();
                     for(int i = 0 ; i < op.length();i++)
                     {
-                        openPortCode[i] = "Open Port" + SEPERATE + op.getString(i);
+                        openPortCode[i] = openPortName + SEPERATE + op.getString(i);
                     }
                     currentHanle = HANDLE.OPEN_PORT;
                     SendAsyncTask(openPortCode);
@@ -139,10 +140,11 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
 
                     JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity,getVersion());
                     JSONArray runAppCodes = data.getJSONArray("RunApp");
+                    String runAppName = data.get("RunAppName").toString();
                     int count = runAppCodes.length();
                     String[] cs = new String[count];
                     for(int i = 0 ; i < count;i++){
-                        cs[i] = "Run App" + SEPERATE + runAppCodes.getString(i);
+                        cs[i] = runAppName + SEPERATE + runAppCodes.getString(i);
                     }
 
 
@@ -161,13 +163,14 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             public void onClick(View v) {
                 try {
 
+
                     JSONObject data = SharedPreferencesUtil.GetJSONObject(__currentActivity, getVersion());
                     JSONArray op = data.getJSONArray("ResetCPU");
                     String[] resetCode = new String[op.length()];
-
+                    String resetName = data.get("ResetCPUName").toString();
                     for(int i = 0 ; i < op.length();i++)
                     {
-                        resetCode[i] = "Reset CPU" + SEPERATE + op.getString(i);
+                        resetCode[i] = resetName + SEPERATE + op.getString(i);
                     }
                     currentHanle = HANDLE.RESET;
                     SendAsyncTask(resetCode);
@@ -182,6 +185,7 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
         tvAction.setMovementMethod(new ScrollingMovementMethod());
         tvResult = (TextView)findViewById(R.id.tvResult);
         tvResult.setMovementMethod(new ScrollingMovementMethod());
+        final MainActivity mainActivity = this;
         _handler = new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
@@ -204,9 +208,10 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
                         }
 
                         String str = new String(bytes);
-                        if(currentHanle == HANDLE.OPEN_PORT) {
-                            String ipaddress = getIPAdress(_data);
+                        Boolean isDecode = mainActivity.isDecode();
+                        if(currentHanle == HANDLE.OPEN_PORT && isDecode) {
 
+                            String ipaddress = getIPAdress(_data);
                             if (_isReceive == 1 && ipaddress != "") {
                                 setTextForResult(str + "\n\n" + ipaddress);
                                 _isReceive = 0;
@@ -253,6 +258,15 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             }
         });
     }
+    public Boolean isDecode(){
+        return this._isDecode;
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        this._isDecode = SharedPreferencesUtil.GetBoolean(this, Constants.KEY_IS_DECODE);
+    }
+
     private void setTextForResult(String text)
     {
         String now = "<b><u>" + getNow() + "</u></b>";
@@ -587,11 +601,18 @@ public class MainActivity extends AppCompatActivity implements ISLDeviceChanged 
             JSONArray pre_sets = data.getJSONArray("WriteSetting");
             IFCSetting setting = (IFCSetting) spSetting.getSelectedItem();
             int count = pre_sets.length();
-            String[] cs = new String[count + 1];
+            String[] codes = setting.getCode().split(";");
+            String[] cs = new String[count + codes.length];
+            String actionName = data.get("WriteSettingName").toString();
             for(int i = 0 ; i < count;i++){
-                cs[i] = "WriteSetting" + SEPERATE + pre_sets.getString(i);
+                cs[i] = actionName + SEPERATE + pre_sets.getString(i);
             }
-            cs[count] = setting.getName() + SEPERATE + setting.getCode();
+
+            for(int i = 0 ; i < codes.length;i++){
+                cs[i + count] = setting.getName() + SEPERATE + codes[i];
+            }
+
+
             SendAsyncTask(cs);
         } catch (Exception e) {
             tvResult.setText("Cannot write setting");

@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 
 import com.loopj.android.http.JsonHttpResponseHandler;
@@ -27,6 +28,7 @@ import sl.com.lib.webapiutil.WebApiUtil;
 
 public class SettingActivity extends AppCompatActivity {
     private EditText etUrlService, etUrlMain;
+    private CheckBox chkIsDecode;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,6 +61,10 @@ public class SettingActivity extends AppCompatActivity {
         etUrlMain = (EditText)findViewById(R.id.etUrlMain);
         etUrlMain.setRawInputType(InputType.TYPE_NULL);
         etUrlMain.setTextIsSelectable(true);
+
+        chkIsDecode =  (CheckBox) findViewById(R.id.chkIsDecode);
+        boolean isDecode = SharedPreferencesUtil.GetBoolean(this, Constants.KEY_IS_DECODE, true);
+        chkIsDecode.setChecked(isDecode);
         loadData();
 
     }
@@ -110,7 +116,8 @@ public class SettingActivity extends AppCompatActivity {
         else{
             final Activity activity = this;
             String urlService = etUrlService.getText().toString();
-
+            Boolean isDecode = chkIsDecode.isChecked();
+            SharedPreferencesUtil.SetBoolen(this,Constants.KEY_IS_DECODE, isDecode);
             SharedPreferencesUtil.SetString(this,Constants.KEY_URL_SERVICE, urlService);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
